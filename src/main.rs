@@ -76,7 +76,7 @@ fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> (usize, usize) {
 			let key = (pair[0], pair[1]);
 			if let Some(f) = frequencies.get_mut(&key) {
 				*f += frequency;
-				if *f > largest_frequency {
+				if *f >= largest_frequency {
 					best_pair= key;
 					largest_frequency = *f;
 				}
@@ -95,13 +95,24 @@ fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> (usize, usize) {
 fn merge_tokens(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, usize), new: usize) {
 
 	for (entry, _) in lexicon {
-		for i in 0..(entry.len()-1) {
+		let mut i = 0;
+		let mut max = entry.len()-1;
+		while i < max {
 			if entry[i] == pair.0 && entry[i+1] == pair.1 {
 				entry.remove(i+1);
 				entry[i] = new;
+				max -= 1;
 			}
+			i += 1;
 		}
 	}
+}
+
+fn print_vocab(vocab: &Vec<String>) {
+	for t in vocab {
+		print!("'{t}'   ");
+	}
+	println!()
 }
 
 fn main() {
@@ -114,12 +125,14 @@ fn main() {
 	let mut lexicon = shatter_words(&words, &vocab).unwrap();
 
 
-	let pair = most_frequent_pair(&lexicon);
-	let new_token = vocab[pair.0].clone() + &vocab[pair.1];
-	vocab.push(new_token);
-	let new_token_id = vocab.len() - 1;
-	merge_tokens(&mut lexicon, pair, new_token_id);
+	for _ in 0..100 {
+		let pair = most_frequent_pair(&lexicon);
+		let new_token = vocab[pair.0].clone() + &vocab[pair.1];
+		vocab.push(new_token);
+		let new_token_id = vocab.len() - 1;
+		merge_tokens(&mut lexicon, pair, new_token_id);
+	}
 
 	print_lexicon(&lexicon, &vocab);
-
+	print_vocab(&vocab);
 }
