@@ -1,4 +1,4 @@
-use std::{fs::{read_to_string}, io::{stdout, Write, stdin}, collections::{HashSet, HashMap}, time::SystemTime, process::exit};
+use std::{fs::{read_to_string, read_dir}, io::{stdout, Write, stdin}, collections::{HashSet, HashMap}, time::SystemTime, process::exit};
 
 fn corpus_to_words(corpus: &str) -> Vec<(String, u32)> {
 	let mut words = HashMap::new();
@@ -148,7 +148,17 @@ impl Printer {
 fn main() {
 	let printer = Printer { start: SystemTime::now() };
 
-	printer.print("Input corpus name:");
+	let paths = read_dir(".\\corpora\\").unwrap();
+	printer.print(&format!("Input corpus name from {:?}:", paths.filter_map(|e| {
+		let str = e.unwrap().file_name().to_str().unwrap().trim().to_owned();
+
+		if str.split(".txt").count() == 2 {
+			Some(str.split(".txt").next().unwrap().to_owned())
+		}
+		else {
+			None
+		}
+	}).collect::<Vec<String>>()));
 	let corpus_name = {
 		let mut str = String::new();
 		stdin().read_line(&mut str).unwrap();
@@ -171,7 +181,7 @@ fn main() {
 	let mut lexicon = shatter_words(&words, &vocab).unwrap();
 
 	printer.print("producing new tokens...");
-	let new_tokens = 1;
+	let new_tokens = 3000;
 	let bar_width = 50;
 	for i in 0..new_tokens {
 		let mut should_break = false;
