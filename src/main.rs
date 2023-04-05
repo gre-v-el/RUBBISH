@@ -1,4 +1,4 @@
-use std::{fs::{File, read_to_string}, io::{BufReader, stdout, Write}, collections::{HashSet, HashMap}, ops::Index, time::SystemTime};
+use std::{fs::{read_to_string}, io::{stdout, Write, stdin}, collections::{HashSet, HashMap}, time::SystemTime, process::exit};
 
 fn corpus_to_words(corpus: &str) -> Vec<(String, u32)> {
 	let mut words = HashMap::new();
@@ -35,14 +35,8 @@ fn shatter_words(words: &Vec<(String, u32)>, vocab: &Vec<(Option<(usize, usize)>
 		let mut tokens = Vec::new();
 		for c in word.chars() {
 			let target_token = format!("{c}");
-			let mut index = None;
-			for (i, (_, t)) in vocab.iter().enumerate() {
-				if *t == target_token {
-					index = Some(i);
-					break;
-				}
-			}
-			if let Some(i) = index {
+			let index = vocab.binary_search_by(|v| {v.1.cmp(&target_token)});
+			if let Ok(i) = index {
 				tokens.push(i);
 			}
 			else {
@@ -55,8 +49,8 @@ fn shatter_words(words: &Vec<(String, u32)>, vocab: &Vec<(Option<(usize, usize)>
 	Ok(shattered)
 }
 
-fn print_lexicon(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<(usize, usize)>, String)>, percentage: f32) {
-	for (entry, frequency) in &lexicon[(lexicon.len() as f32 * (1.0 - percentage)) as usize..] {
+fn print_lexicon(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<(usize, usize)>, String)>, num: usize) {
+	for (entry, frequency) in &lexicon[(lexicon.len() - num)..] {
 		print!("{:?} = |", entry);
 		for t in entry {
 			print!("{}|", vocab[*t].1);
@@ -65,7 +59,7 @@ fn print_lexicon(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<(usize, u
 	}
 }
 
-fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> (usize, usize) {
+fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> Option<(usize, usize)> {
 	let mut best_pair = (0, 0);
 	let mut largest_frequency = 0;
 
@@ -77,19 +71,26 @@ fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> (usize, usize) {
 			if let Some(f) = frequencies.get_mut(&key) {
 				*f += frequency;
 				if *f >= largest_frequency {
-					best_pair= key;
+					best_pair = key;
 					largest_frequency = *f;
 				}
 			}
 			else {
 				frequencies.insert(key, *frequency);
+				if *frequency >= largest_frequency {
+					best_pair = key;
+					largest_frequency = *frequency;
+				}
 			}
-
-			frequencies.insert(key, if let Some(f) = frequencies.get(&key) {f+1} else {1});
 		}
 	}
 
-	best_pair
+	if largest_frequency == 0 {
+		None
+	}
+	else {
+		Some(best_pair)
+	}
 }
 
 fn merge_tokens(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, usize), new: usize) {
@@ -109,47 +110,94 @@ fn merge_tokens(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, usize), new:
 }
 
 fn print_vocab(vocab: &Vec<(Option<(usize, usize)>, String)>) {
-	for t in vocab {
-		print!("'{}'   ", t.1);
+	let row_width = 5;
+	let mut longest_token = 1;
+	for (_, t) in vocab {
+		longest_token = longest_token.max(t.chars().count());
 	}
-	println!()
+
+	for (i, (_, t)) in vocab.iter().enumerate() {
+		let token_len = t.chars().count();
+		let padding = " ".repeat(longest_token - token_len);
+		print!("'{t}'{padding} ");
+		if i % row_width == row_width-1 {
+			println!();
+		}
+	}
+	println!();
+}
+
+fn tokenize_text(text: &String, vocab: Vec<(Option<(usize, usize)>, String)>) {
+	for (previous, t) in vocab {
+		if previous == None {
+
+		}
+	}
+}
+
+struct Printer {
+	start: SystemTime
+}
+
+impl Printer {
+	fn print(&self, str: &str) {
+		println!("[{:.2}] {str}", self.start.elapsed().unwrap().as_secs_f32());
+	}
 }
 
 fn main() {
-	let start = SystemTime::now();
+	let printer = Printer { start: SystemTime::now() };
 
-	println!("[{:.2}] reading corpus...", start.elapsed().unwrap().as_secs_f32());
-	let corpus = read_to_string(".\\corpora\\PT.txt").unwrap();
+	printer.print("Input corpus name:");
+	let corpus_name = {
+		let mut str = String::new();
+		stdin().read_line(&mut str).unwrap();
+		str.trim().to_owned()
+	};
 
-	println!("[{:.2}] normalizing corpus...", start.elapsed().unwrap().as_secs_f32());
+	printer.print("reading corpus...");
+	let corpus = read_to_string(format!(".\\corpora\\{corpus_name}.txt")).unwrap_or_else(|_| {printer.print("No such corpus, exiting..."); exit(0)});
+
+	printer.print("normalizing corpus...");
 	let corpus = corpus.to_lowercase();
 
-	println!("[{:.2}] extracting word frequencies...", start.elapsed().unwrap().as_secs_f32());
+	printer.print("extracting word frequencies...");
 	let words = corpus_to_words(&corpus);
 
-	println!("[{:.2}] producing starting tokens...", start.elapsed().unwrap().as_secs_f32());
+	printer.print("producing starting tokens...");
 	let mut vocab = words_to_vocab(&words);
 
-	println!("[{:.2}] tokenizing words...", start.elapsed().unwrap().as_secs_f32());
+	printer.print("tokenizing words...");
 	let mut lexicon = shatter_words(&words, &vocab).unwrap();
 
-	// print_vocab(&vocab);
-	// print_lexicon(&lexicon, &vocab);
-
-	println!("[{:.2}] producing new tokens:", start.elapsed().unwrap().as_secs_f32());
-	let new_tokens = 10;
+	printer.print("producing new tokens...");
+	let new_tokens = 1;
+	let bar_width = 50;
 	for i in 0..new_tokens {
-		let pair = most_frequent_pair(&lexicon);
+		let mut should_break = false;
+		let pair = most_frequent_pair(&lexicon).unwrap_or_else(|| {
+			should_break = true;
+			println!("\n");
+			printer.print(&format!("token no. {i} couldn't be created, as every word is a single token now"));
+			(0, 0)
+		});
+		if should_break { break; }
 		let new_token = vocab[pair.0].1.clone() + &vocab[pair.1].1;
 		vocab.push((Some(pair), new_token));
 		let new_token_id = vocab.len() - 1;
 		merge_tokens(&mut lexicon, pair, new_token_id);
-		print!("\r[{}{}] {}/{new_tokens}", "X".repeat(i), " ".repeat(new_tokens - i), i+1);
+
+		let xs = ((i as f32 / new_tokens as f32) * bar_width as f32) as usize;
+		print!("\r[{}{}] {}/{new_tokens}", "X".repeat(xs), " ".repeat(bar_width - xs), i+1);
+
 		stdout().flush().unwrap();
 	}
-
-	println!("\n\n1/1000 of most frequent words:");
-	print_lexicon(&lexicon, &vocab, 0.001);
-	println!("\ntokens:");
+	println!("\n");
+	
+	printer.print("tokens:");
 	print_vocab(&vocab);
+	
+	println!("\n");
+	printer.print("top 100 most frequent words:");
+	print_lexicon(&lexicon, &vocab, 100);
 }
