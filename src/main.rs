@@ -93,19 +93,23 @@ fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> Option<(usize, usize)
 	}
 }
 
-fn merge_tokens(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, usize), new: usize) {
+fn merge_tokens(tokens: &mut Vec<usize>, pair: (usize, usize), new: usize) {
+	let mut i = 0;
+	let mut max = tokens.len()-1;
+	while i < max {
+		if tokens[i] == pair.0 && tokens[i+1] == pair.1 {
+			tokens.remove(i+1);
+			tokens[i] = new;
+			max -= 1;
+		}
+		i += 1;
+	}
+}
+
+fn merge_tokens_lexicon(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, usize), new: usize) {
 
 	for (entry, _) in lexicon {
-		let mut i = 0;
-		let mut max = entry.len()-1;
-		while i < max {
-			if entry[i] == pair.0 && entry[i+1] == pair.1 {
-				entry.remove(i+1);
-				entry[i] = new;
-				max -= 1;
-			}
-			i += 1;
-		}
+		merge_tokens(entry, pair, new);
 	}
 }
 
@@ -116,10 +120,10 @@ fn print_vocab(vocab: &Vec<(Option<(usize, usize)>, String)>) {
 		longest_token = longest_token.max(t.chars().count());
 	}
 
-	for (i, (_, t)) in vocab.iter().enumerate() {
+	for (i, (p, t)) in vocab.iter().enumerate() {
 		let token_len = t.chars().count();
 		let padding = " ".repeat(longest_token - token_len);
-		print!("'{t}'{padding} ");
+		print!("{:?}'{t}'{padding} ", p);
 		if i % row_width == row_width-1 {
 			println!();
 		}
@@ -127,12 +131,51 @@ fn print_vocab(vocab: &Vec<(Option<(usize, usize)>, String)>) {
 	println!();
 }
 
-fn tokenize_text(text: &String, vocab: Vec<(Option<(usize, usize)>, String)>) {
-	for (previous, t) in vocab {
-		if previous == None {
+fn tokenize_text(text: &String, vocab: &Vec<(Option<(usize, usize)>, String)>) -> Result<Vec<usize>, String> {
+	let text = text.to_lowercase();
+	let mut border = 0;
+	loop {
+		border += 1;
+		if vocab.get(border) == None { break; }
+		else if let Some(_) = vocab.get(border).unwrap().0 { break; }
+	}
 
+	let starting_tokens = &vocab[..border];
+	
+	let mut out = Vec::new();
+
+	for char in text.chars() {
+		let index = starting_tokens.binary_search_by(|e| e.1.chars().next().unwrap().cmp(&char));
+
+		let index = if let Ok(i) = index { i } else { return Err(format!("unknown token in input: {}", char)) };
+
+		out.push(index);
+	}
+
+	for (i, (prev, token)) in vocab[border..].iter().enumerate() {
+		let pair = if let Some(p) = prev {*p} else {return Err(format!("Token outside of order: '{}'", token))};
+		merge_tokens(&mut out, pair, i+border);
+	}
+
+	Ok(out)
+}
+
+fn tokens_to_text(tokens: &Vec<usize>, vocab: &Vec<(Option<(usize, usize)>, String)>, debug: bool) -> String {
+	let mut out = String::new();
+	if debug {
+		out += "|";
+		for t in tokens {
+			out += &vocab[*t].1;
+			out += "|";
 		}
 	}
+	else {
+		for t in tokens {
+			out += &vocab[*t].1;
+		}
+	}
+
+	out
 }
 
 struct Printer {
@@ -181,7 +224,7 @@ fn main() {
 	let mut lexicon = shatter_words(&words, &vocab).unwrap();
 
 	printer.print("producing new tokens...");
-	let new_tokens = 3000;
+	let new_tokens = 300;
 	let bar_width = 50;
 	for i in 0..new_tokens {
 		let mut should_break = false;
@@ -195,7 +238,7 @@ fn main() {
 		let new_token = vocab[pair.0].1.clone() + &vocab[pair.1].1;
 		vocab.push((Some(pair), new_token));
 		let new_token_id = vocab.len() - 1;
-		merge_tokens(&mut lexicon, pair, new_token_id);
+		merge_tokens_lexicon(&mut lexicon, pair, new_token_id);
 
 		let xs = ((i as f32 / new_tokens as f32) * bar_width as f32) as usize;
 		print!("\r[{}{}] {}/{new_tokens}", "X".repeat(xs), " ".repeat(bar_width - xs), i+1);
@@ -210,4 +253,27 @@ fn main() {
 	println!("\n");
 	printer.print("top 100 most frequent words:");
 	print_lexicon(&lexicon, &vocab, 100);
+	println!();
+
+	printer.print("Text to tokenize:");
+	let text = {
+		let mut str = String::new();
+		stdin().read_line(&mut str).unwrap();
+		str.trim().to_owned()
+	};
+	let tokenized = tokenize_text(&text, &vocab).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
+	let tokenized_text = tokens_to_text(&tokenized, &vocab, true);
+
+	printer.print(&format!("{:?}", tokenized));
+	printer.print(&format!("{}", tokenized_text));
+
 }
+
+
+/*
+	TODO:
+	* encapsulate
+	* save
+	* analyze
+	* generate
+ */
