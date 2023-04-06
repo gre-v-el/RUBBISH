@@ -2,7 +2,7 @@ mod printer;
 mod preprocessing;
 mod tokenizer;
 
-use std::{fs::{read_dir, File}, io::{stdout, Write, stdin, BufWriter}, time::SystemTime, process::exit};
+use std::{fs::{File, create_dir_all}, io::Write, time::SystemTime, process::exit};
 
 use nanoserde::SerRon;
 
@@ -27,7 +27,7 @@ fn main() {
 	let new_tokens = printer.input().parse::<usize>().unwrap_or_else(|_| {printer.print("Invalid number, exiting..."); exit(0)});
 
 	printer.print("reading corpus and extracting word frequencies...");
-	let words = corpus_to_words(&options[corpus_id]).unwrap_or_else(|e| {printer.print(&format!("Error: {}...", e)); exit(0)});
+	let words = corpus_to_words(&options[corpus_id]).unwrap_or_else(|e| {printer.print(&format!("Error: '{}', exiting...", e)); exit(0)});
 
 	printer.print("producing starting tokens...");
 	let mut vocab = words_to_vocab(&words);
@@ -37,26 +37,34 @@ fn main() {
 
 	printer.print("generating new tokens...");
 	generate_tokens(&mut vocab, &mut lexicon, new_tokens);
-	
-	printer.print("tokens:");
-	print_vocab(&vocab);
-	
-	println!("\n");
+
 	printer.print("example words:");
-	print_lexicon(&lexicon, &vocab, 20);
+	print_lexicon(&lexicon, &vocab, 10);
 	println!();
 
-	printer.print(&format!("saving vocabulary to ./vocabs/{}_{new_tokens}.ron", options[corpus_id]));
-	let mut file = File::create(format!("./vocabs/{}_{new_tokens}.ron", options[corpus_id])).unwrap();
+	printer.print(&format!("saving vocabulary to ./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id]));
+	create_dir_all(&format!("./corpora/{}/data/", options[corpus_id])).unwrap();
+	let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id])).unwrap();
 	let serialized = vocab.serialize_ron();
 	file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
 	drop(file);
 
+	printer.print("tokenizing whole corpus");
+	let tokenized = tokenize_corpus(&options[corpus_id], &vocab).unwrap_or_else(|e| {
+		printer.print(&format!("Error while tokenizing: '{}'. Exiting...", e));
+		exit(0);
+	});
+
+	printer.print(&format!("saving tokenization to ./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id]));
+	let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id])).unwrap();
+	let serialized = tokenized.serialize_ron();
+	file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
+	drop(file);
 
 
 	printer.print("Text to tokenize:");
 	let text = printer.input();
-	let tokenized = tokenize_text(&text, &vocab).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
+	let tokenized = tokenize_text(&text, &vocab, None).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
 	let tokenized_text = tokens_to_text(&tokenized, &vocab, true);
 
 	printer.print(&format!("{:?}", tokenized));
@@ -67,7 +75,7 @@ fn main() {
 
 /*
 	TODO:
-	* save
+	* read
 	* analyze
 	* generate
  */

@@ -7,7 +7,7 @@ pub struct Printer {
 
 impl Printer {
 	pub fn print(&self, str: &str) {
-		println!("[{:.2}] {str}", self.start.elapsed().unwrap().as_secs_f32());
+		println!("<{:.2}> {str}", self.start.elapsed().unwrap().as_secs_f32());
 	}
 
 	pub fn input(&self) -> String {

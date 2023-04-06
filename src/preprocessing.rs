@@ -30,12 +30,12 @@ pub fn corpus_to_words(folder: &str) -> Result<Vec<(String, u32)>, String> {
 				return Err(format!("Non-txt file found: {}", path.file_name().to_str().unwrap()));
 			}
 		}
-		else {
+		else if path.metadata().unwrap().is_file() {
 			return Err(format!("Error while reading file: {}", path.file_name().to_str().unwrap()));
 		}
     }
 
-	let mut to_sort = words.into_iter().map(|(w, n)| (w.to_owned(), n)).collect::<Vec<(String, u32)>>();
+	let mut to_sort = words.into_iter().collect::<Vec<(String, u32)>>();
 	to_sort.sort_unstable_by_key(|(_, n)| { *n as i32 });
 	to_sort.iter_mut().for_each(|(w, _)| {w.push(' ')});
 
