@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::{stdout, Write}};
 
 
 pub fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>) -> Option<(usize, usize)> {
@@ -53,6 +53,30 @@ pub fn merge_tokens_lexicon(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, 
 	for (entry, _) in lexicon {
 		merge_tokens_text(entry, pair, new);
 	}
+}
+
+pub fn generate_tokens(vocab: &mut Vec<(Option<(usize, usize)>, String)>, lexicon: &mut Vec<(Vec<usize>, u32)>, new_tokens: usize) {
+	let bar_width = 50;
+	for i in 0..new_tokens {
+		let mut should_break = false;
+		let pair = most_frequent_pair(&lexicon).unwrap_or_else(|| {
+			should_break = true;
+			println!("\n");
+			println!("token no. {i} couldn't be created, as every word is a single token now");
+			(0, 0)
+		});
+		if should_break { break; }
+		let new_token = vocab[pair.0].1.clone() + &vocab[pair.1].1;
+		vocab.push((Some(pair), new_token));
+		let new_token_id = vocab.len() - 1;
+		merge_tokens_lexicon(lexicon, pair, new_token_id);
+
+		let xs = ((i as f32 / new_tokens as f32) * bar_width as f32) as usize;
+		print!("\r[{}{}] {}/{new_tokens}", "X".repeat(xs), " ".repeat(bar_width - xs), i+1);
+
+		stdout().flush().unwrap();
+	}
+	println!("\n");
 }
 
 pub fn tokenize_text(text: &String, vocab: &Vec<(Option<(usize, usize)>, String)>) -> Result<Vec<usize>, String> {

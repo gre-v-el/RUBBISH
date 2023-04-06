@@ -1,17 +1,55 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, fs::{read_dir, read_to_string}, path::Path, ffi::OsStr};
 
+pub fn get_corpora_names() -> Vec<String> {
+	let paths = read_dir(".\\corpora\\").unwrap();
+	paths.filter_map(|e| {
+		let e = e.unwrap();
+		if e.metadata().unwrap().is_dir() {
+			Some(e.file_name().into_string().unwrap())
+		}
+		else {
+			None
+		}
+	}).collect::<Vec<String>>()
+}
 
-pub fn corpus_to_words(corpus: &str) -> Vec<(String, u32)> {
+pub fn corpus_to_words(folder: &str) -> Result<Vec<(String, u32)>, String> {
 	let mut words = HashMap::new();
-	for word in corpus.split_whitespace() {
-		words.insert(word, if let Some(v) = words.get(word) {*v+1} else {1});
-	}
-	
+
+	let paths = read_dir(format!(".\\corpora\\{folder}\\")).unwrap();
+
+    for path in paths {
+		let path = path.unwrap();
+        if let Some("txt") = Path::new(&path.file_name()).extension().and_then(OsStr::to_str) {
+			let content = read_to_string(format!(".\\corpora\\{folder}\\{}", path.file_name().to_str().unwrap()));
+			if let Ok(content) = content {
+
+				words.extend(string_to_words(&content.to_lowercase()));
+			}
+			else {
+				return Err(format!("Non-txt file found: {}", path.file_name().to_str().unwrap()));
+			}
+		}
+		else {
+			return Err(format!("Error while reading file: {}", path.file_name().to_str().unwrap()));
+		}
+    }
+
 	let mut to_sort = words.into_iter().map(|(w, n)| (w.to_owned(), n)).collect::<Vec<(String, u32)>>();
 	to_sort.sort_unstable_by_key(|(_, n)| { *n as i32 });
 	to_sort.iter_mut().for_each(|(w, _)| {w.push(' ')});
 
-	to_sort
+	Ok(to_sort)
+}
+
+
+pub fn string_to_words(corpus: &str) -> HashMap<String, u32> {
+	let mut words = HashMap::new();
+	for word in corpus.split_whitespace() {
+		words.insert(word.to_owned(), if let Some(v) = words.get(word) {*v+1} else {1});
+	}
+	
+	words
 }
 
 pub fn words_to_vocab(words: &Vec<(String, u32)>) -> Vec<(Option<(usize, usize)>, String)> {
