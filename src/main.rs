@@ -117,7 +117,6 @@ fn main() {
 
 /*
 	TODO:
-	* DRY
 	* analyze
 	* generate
  */

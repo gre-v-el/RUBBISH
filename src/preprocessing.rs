@@ -1,6 +1,7 @@
-use std::{collections::{HashMap, HashSet}, fs::{read_dir, read_to_string}, path::Path, ffi::OsStr};
+use std::{collections::{HashMap, HashSet}, fs::{read_dir, read_to_string, create_dir_all}, path::Path, ffi::OsStr};
 
 pub fn get_corpora_names() -> Vec<String> {
+	create_dir_all(".\\corpora\\").unwrap();
 	let paths = read_dir(".\\corpora\\").unwrap();
 	paths.filter_map(|e| {
 		let e = e.unwrap();
