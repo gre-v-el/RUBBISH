@@ -1,6 +1,7 @@
 mod printer;
 mod preprocessing;
 mod tokenizer;
+mod succession_tree;
 
 use std::{fs::{File, create_dir_all, read_to_string}, io::Write, time::SystemTime, process::exit, path::Path};
 
