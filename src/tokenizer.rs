@@ -82,7 +82,9 @@ pub fn generate_tokens(vocab: &mut Vec<(Option<(usize, usize)>, String)>, lexico
 		let new_token_id = vocab.len() - 1;
 		merge_tokens_lexicon(lexicon, pair, new_token_id);
 
-		print_progressbar(50, (i+1) as f32 / new_tokens as f32, &format!("{}/{new_tokens}", i+1));
+		if i % 10 == 9 || i == new_tokens - 1 {
+			print_progressbar(50, (i+1) as f32 / new_tokens as f32, &format!("{}/{new_tokens}", i+1));
+		}
 	}
 	println!("");
 }

@@ -6,6 +6,7 @@ mod succession_tree;
 use std::{fs::{File, create_dir_all, read_to_string}, io::Write, time::SystemTime, process::exit, path::Path};
 
 use nanoserde::{SerRon, DeRon};
+use succession_tree::SuccessionTree;
 
 use crate::{printer::*, preprocessing::*, tokenizer::*};
 
@@ -26,6 +27,14 @@ fn main() {
 	
 	printer.print("Input new tokens count:");
 	let new_tokens = printer.input().parse::<usize>().unwrap_or_else(|_| {printer.print("Invalid number, exiting..."); exit(0)});
+
+	printer.print("Input phrase length:");
+	let phrase_length = printer.input().parse::<usize>().unwrap_or_else(|_| {printer.print("Invalid number, exiting..."); exit(0)});
+	if phrase_length == 0 {
+		printer.print("Invalid number, exiting..."); 
+		exit(0);
+	}
+
 
 	let vocab: Vec<(Option<(usize, usize)>, String)> =
 	if Path::new(&format!("./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id])).exists() {
@@ -104,8 +113,46 @@ fn main() {
 		tokenized
 	};
 
+	let tree: SuccessionTree =
+	if Path::new(&format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id])).exists() {
+		printer.print(&format!("found previously created tree at ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron, loading...", options[corpus_id]));
+		
+		let string = read_to_string(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id]));
+		let string = if let Ok(s) = string { s } else {
+			printer.print("Error while reading the file, exiting...");
+			exit(0);
+		};
+
+
+		if let Ok(v) = DeRon::deserialize_ron(&string) { v }
+		else {
+			printer.print("invalid file contents, exiting...");
+			exit(0)
+		}
+	}
+	else {
+		printer.print("generating succession tree...");
+		let mut tree = SuccessionTree::new(vocab.len(), phrase_length + 1);
+		for (i, tokens) in tokenized.windows(phrase_length + 1).enumerate() {
+			print_progressbar(50, (i+1) as f32 / (tokenized.len() - phrase_length) as f32, "");
 	
-	printer.print("Text to tokenize:");
+			if let Err(e) = tree.register(tokens) {
+				printer.print(&e);
+				exit(0);
+			}
+		}
+		println!();
+	
+		printer.print(&format!("saving succession tree to ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id]));
+		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id])).unwrap();
+		let serialized = tree.serialize_ron();
+		file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
+		drop(file);
+
+		tree
+	};
+	
+	printer.print("Text to be continued:");
 	let text = printer.input();
 	let tokenized = tokenize_text(&text, &vocab, None).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
 	let tokenized_text = tokens_to_text(&tokenized, &vocab, true);
@@ -118,6 +165,5 @@ fn main() {
 
 /*
 	TODO:
-	* analyze
 	* generate
  */
