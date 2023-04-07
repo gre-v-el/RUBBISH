@@ -1,6 +1,8 @@
-use std::{collections::HashMap, io::{stdout, Write}, fs::{read_dir, read_to_string}, path::Path, ffi::OsStr};
+use std::{collections::HashMap, fs::{read_dir, read_to_string}, path::Path, ffi::OsStr};
 
 use regex::Regex;
+
+use crate::printer::print_progressbar;
 
 
 pub fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<(usize, usize)>, String)>) -> Option<(usize, usize)> {
@@ -66,7 +68,6 @@ pub fn merge_tokens_lexicon(lexicon: &mut Vec<(Vec<usize>, u32)>, pair: (usize, 
 }
 
 pub fn generate_tokens(vocab: &mut Vec<(Option<(usize, usize)>, String)>, lexicon: &mut Vec<(Vec<usize>, u32)>, new_tokens: usize) {
-	let bar_width = 50;
 	for i in 0..new_tokens {
 		let mut should_break = false;
 		let pair = most_frequent_pair(&lexicon, &vocab).unwrap_or_else(|| {
@@ -81,11 +82,9 @@ pub fn generate_tokens(vocab: &mut Vec<(Option<(usize, usize)>, String)>, lexico
 		let new_token_id = vocab.len() - 1;
 		merge_tokens_lexicon(lexicon, pair, new_token_id);
 
-		let xs = (((i+1) as f32 / new_tokens as f32) * bar_width as f32) as usize;
-		print!("\r[{}{}] {}/{new_tokens}", "X".repeat(xs), " ".repeat(bar_width - xs), i+1);
-		stdout().flush().unwrap();
+		print_progressbar(50, (i+1) as f32 / new_tokens as f32, &format!("{}/{new_tokens}", i+1));
 	}
-	println!("\n");
+	println!("");
 }
 
 pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, debug: Option<&str>) -> Result<Vec<usize>, String> {
@@ -104,10 +103,7 @@ pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, 
 	let text_length = text.chars().count();
 	for (i, char) in text.chars().enumerate() {
 		if let Some(t) = debug {
-			let bar_width = 50;
-			let xs = ((i+1) as f32 / text_length as f32 * bar_width as f32) as usize;
-			print!("\r[{}{}] tokenizing: {t}", "X".repeat(xs), " ".repeat(bar_width - xs));
-			stdout().flush().unwrap();
+			print_progressbar(50, (i+1) as f32 / text_length as f32, &format!("tokenizing: {t}"));
 		}
 
 		let index = starting_tokens.binary_search_by(|e| e.1.chars().next().unwrap().cmp(&char));
@@ -119,10 +115,7 @@ pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, 
 
 	for (i, (prev, token)) in vocab[border..].iter().enumerate() {
 		if let Some(t) = debug {
-			let bar_width = 50;
-			let xs = ((i+1) as f32 / (vocab.len()-border) as f32 * bar_width as f32) as usize;
-			print!("\r[{}{}] merging: {t}   ", "X".repeat(xs), " ".repeat(bar_width - xs));
-			stdout().flush().unwrap();
+			print_progressbar(50, (i+1) as f32 / (vocab.len()-border) as f32, &format!("merging: {t}   "));
 		}
 		let pair = if let Some(p) = prev {*p} else {return Err(format!("token outside of order: '{}'", token))};
 		merge_tokens_text(&mut out, pair, i+border);

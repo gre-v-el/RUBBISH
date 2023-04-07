@@ -50,3 +50,9 @@ pub fn print_lexicon(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<(usiz
 		println!(": {frequency}");
 	}
 }
+
+pub fn print_progressbar(width: usize, progress: f32, info: &str) {
+	let xs = (width as f32 * progress).round() as usize;
+	print!("\r\u{258F}{}{}\u{2595} {info}", "\u{2587}".repeat(xs), " ".repeat(width - xs));
+	stdout().flush().unwrap();
+}
