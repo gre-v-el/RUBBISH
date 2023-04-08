@@ -24,17 +24,6 @@ RUBBISH run:
 ```
 <0.00> Choose corpus:
 0: gutenberg
-     > 0    
-<3.09> Input new tokens count:
-     > 20000
-<5.48> Input phrase length:
-     > 3
-<9.87> found previously created tokens at ./corpora/gutenberg/data/20000_tokens.bin, loading...
-<9.88> tokenizing whole corpus
-<9.95> Error while tokenizing: 'unknown token in input: '’''. Exiting...
-(base) PS D:\pliki\programowanie\rust\projs\commandline\rubbish\release> .\rubbish.exe
-<0.00> Choose corpus:
-0: gutenberg
      > 0
 <1.87> Input new tokens count:
      > 20000
