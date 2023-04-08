@@ -1,6 +1,6 @@
-use nanoserde::{SerRon, DeRon};
+use nanoserde::{SerRon, DeRon, SerBin};
 
-#[derive(SerRon, DeRon)]
+#[derive(SerRon, DeRon, SerBin)]
 pub struct Node {
 	value: usize,
 	children: Vec<(Node, usize)> // child, strength
@@ -12,7 +12,7 @@ impl Node {
 	}
 }
 
-#[derive(SerRon, DeRon)]
+#[derive(SerRon, DeRon, SerBin)]
 pub struct SuccessionTree {
 	entry_points: Vec<Node>,
 	depth: usize,
@@ -48,4 +48,41 @@ impl SuccessionTree {
 
 		Ok(())
 	}
+
+	pub fn next_token(&self, tokens: &[usize]) -> Result<usize, TokenGenerationError> {
+		if tokens.len() == 0 {
+			return Err(TokenGenerationError::NoInput);
+		}
+
+		let depth = tokens.len().min(self.depth - 1);
+
+		let mut current = &self.entry_points[tokens[0]];
+		for i in 1..depth {
+			let next = current.children.binary_search_by(|(n, _)| n.value.cmp(&tokens[i]));
+			let next = if let Ok(n) = next { n } else { return Err(TokenGenerationError::UnknownSequence); };
+			current = &current.children[next].0;
+		}
+
+		if current.children.len() == 0 { return Err(TokenGenerationError::UnknownSequence); }
+
+		let mut sum_weights = 0;
+		for (_, weight) in &current.children {
+			sum_weights += weight;
+		}
+
+		let mut choice = (rand::random::<usize>() % sum_weights) as i64;
+		for (n, weight) in &current.children {
+			choice -= *weight as i64;
+			if choice < 0 {
+				return Ok(n.value);
+			}
+		}
+
+		unreachable!()
+	}
+}
+
+pub enum TokenGenerationError {
+	NoInput,
+	UnknownSequence,
 }

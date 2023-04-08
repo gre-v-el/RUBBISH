@@ -5,8 +5,8 @@ mod succession_tree;
 
 use std::{fs::{File, create_dir_all, read_to_string}, io::Write, time::SystemTime, process::exit, path::Path};
 
-use nanoserde::{SerRon, DeRon};
-use succession_tree::SuccessionTree;
+use nanoserde::{SerRon, DeRon, SerBin};
+use succession_tree::{SuccessionTree, TokenGenerationError};
 
 use crate::{printer::*, preprocessing::*, tokenizer::*};
 
@@ -154,16 +154,36 @@ fn main() {
 	
 	printer.print("Text to be continued:");
 	let text = printer.input();
-	let tokenized = tokenize_text(&text, &vocab, None).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
-	let tokenized_text = tokens_to_text(&tokenized, &vocab, true);
-
-	printer.print(&format!("{:?}", tokenized));
+	let mut tokenized = tokenize_text(&text, &vocab, None).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
+	
+	for _ in 0..100 {
+		let mut slice_boundary = if tokenized.len() < phrase_length {0} else {tokenized.len()-phrase_length};
+		loop {
+			let res = tree.next_token(&tokenized[slice_boundary..]);
+			if let Ok(token) = res {
+				tokenized.push(token);
+				break;
+			}
+			else if let Err(e) = res {
+				match e {
+					TokenGenerationError::NoInput => {
+						tokenized.push(rand::random::<usize>() % vocab.len());
+						break;
+					},
+					TokenGenerationError::UnknownSequence => {
+						slice_boundary += 1;
+					}
+				}
+			}
+		}
+	}
+	
+	let tokenized_text = tokens_to_text(&tokenized, &vocab, false);
 	printer.print(&format!("{}", tokenized_text));
 
 }
 
-
-/*
-	TODO:
-	* generate
- */
+// implement creativity
+// change saving format
+// look for optimizations
+// whitespace handling

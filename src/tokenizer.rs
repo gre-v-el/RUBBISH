@@ -48,6 +48,7 @@ pub fn most_frequent_pair(lexicon: &Vec<(Vec<usize>, u32)>, vocab: &Vec<(Option<
 }
 
 pub fn merge_tokens_text(tokens: &mut Vec<usize>, pair: (usize, usize), new: usize) {
+	if tokens.len() == 0 {return;}
 	let mut i = 0;
 	let mut max = tokens.len()-1;
 	while i < max {
@@ -91,14 +92,14 @@ pub fn generate_tokens(vocab: &mut Vec<(Option<(usize, usize)>, String)>, lexico
 
 pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, debug: Option<&str>) -> Result<Vec<usize>, String> {
 	let text = Regex::new("\\s+").unwrap().replace_all(&text.to_lowercase(), " ").into_owned();
-	let mut border = 0;
+	let mut boundary = 0;
 	loop {
-		border += 1;
-		if vocab.get(border) == None { break; }
-		else if let Some(_) = vocab.get(border).unwrap().0 { break; }
+		boundary += 1;
+		if vocab.get(boundary) == None { break; }
+		else if let Some(_) = vocab.get(boundary).unwrap().0 { break; }
 	}
 
-	let starting_tokens = &vocab[..border];
+	let starting_tokens = &vocab[..boundary];
 	
 	let mut out = Vec::new();
 
@@ -115,12 +116,12 @@ pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, 
 		out.push(index);
 	}
 
-	for (i, (prev, token)) in vocab[border..].iter().enumerate() {
+	for (i, (prev, token)) in vocab[boundary..].iter().enumerate() {
 		if let Some(t) = debug {
-			print_progressbar(50, (i+1) as f32 / (vocab.len()-border) as f32, &format!("merging: {t}   "));
+			print_progressbar(50, (i+1) as f32 / (vocab.len()-boundary) as f32, &format!("merging: {t}   "));
 		}
 		let pair = if let Some(p) = prev {*p} else {return Err(format!("token outside of order: '{}'", token))};
-		merge_tokens_text(&mut out, pair, i+border);
+		merge_tokens_text(&mut out, pair, i+boundary);
 	}
 
 	if debug.is_some() {
