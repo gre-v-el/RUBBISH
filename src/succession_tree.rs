@@ -49,7 +49,11 @@ impl SuccessionTree {
 		Ok(())
 	}
 
-	pub fn next_token(&self, tokens: &[usize]) -> Result<usize, TokenGenerationError> {
+	pub fn next_token(&self, tokens: &[usize], creativity: f32) -> Result<usize, TokenGenerationError> {
+		if creativity > 1.0 || creativity < 0.0 { return Err(TokenGenerationError::CreativityOutsideOfRange); }
+		let creativity = 1.0/(0.1 + 0.9*creativity) - 1.0;
+
+
 		if tokens.len() == 0 {
 			return Err(TokenGenerationError::NoInput);
 		}
@@ -65,15 +69,15 @@ impl SuccessionTree {
 
 		if current.children.len() == 0 { return Err(TokenGenerationError::UnknownSequence); }
 
-		let mut sum_weights = 0;
+		let mut sum_weights= 0.0;
 		for (_, weight) in &current.children {
-			sum_weights += weight;
+			sum_weights += (*weight as f32).powf(creativity);
 		}
 
-		let mut choice = (rand::random::<usize>() % sum_weights) as i64;
+		let mut choice = rand::random::<f32>() * sum_weights;
 		for (n, weight) in &current.children {
-			choice -= *weight as i64;
-			if choice < 0 {
+			choice -= (*weight as f32).powf(creativity);
+			if choice < 0.0 {
 				return Ok(n.value);
 			}
 		}
@@ -85,4 +89,5 @@ impl SuccessionTree {
 pub enum TokenGenerationError {
 	NoInput,
 	UnknownSequence,
+	CreativityOutsideOfRange,
 }

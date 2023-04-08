@@ -106,7 +106,9 @@ pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, 
 	let text_length = text.chars().count();
 	for (i, char) in text.chars().enumerate() {
 		if let Some(t) = debug {
-			print_progressbar(50, (i+1) as f32 / text_length as f32, &format!("tokenizing: {t}"));
+			if i % 1000 == 999 || i == text_length-1 {
+				print_progressbar(50, (i+1) as f32 / text_length as f32, &format!("({}/{text_length}) tokenizing: {t}", i+1));
+			}
 		}
 
 		let index = starting_tokens.binary_search_by(|e| e.1.chars().next().unwrap().cmp(&char));
@@ -115,10 +117,16 @@ pub fn tokenize_text(text: &str, vocab: &Vec<(Option<(usize, usize)>, String)>, 
 
 		out.push(index);
 	}
+	
+	if debug.is_some() {
+		println!()
+	}
 
 	for (i, (prev, token)) in vocab[boundary..].iter().enumerate() {
 		if let Some(t) = debug {
-			print_progressbar(50, (i+1) as f32 / (vocab.len()-boundary) as f32, &format!("merging: {t}   "));
+			if i < 100 || i % 10 == 9 || i == vocab.len()-boundary - 1 {
+				print_progressbar(50, (i+1) as f32 / (vocab.len()-boundary) as f32, &format!("({}/{}) merging: {t}", i+1, vocab.len()-boundary));
+			}
 		}
 		let pair = if let Some(p) = prev {*p} else {return Err(format!("token outside of order: '{}'", token))};
 		merge_tokens_text(&mut out, pair, i+boundary);

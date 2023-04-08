@@ -160,7 +160,7 @@ fn main() {
 	for _ in 0..1000 {
 		let mut slice_boundary = if tokenized.len() < phrase_length {0} else {tokenized.len()-phrase_length};
 		loop {
-			let res = tree.next_token(&tokenized[slice_boundary..]);
+			let res = tree.next_token(&tokenized[slice_boundary..], 1.0);
 			if let Ok(token) = res {
 				tokenized.push(token);
 				break;
@@ -173,6 +173,9 @@ fn main() {
 					},
 					TokenGenerationError::UnknownSequence => {
 						slice_boundary += 1;
+					},
+					TokenGenerationError::CreativityOutsideOfRange => {
+						unreachable!();
 					}
 				}
 			}
@@ -183,7 +186,3 @@ fn main() {
 	printer.print(&format!("{}", tokenized_text));
 
 }
-
-// implement creativity
-// look for optimizations - multithreading
-// whitespace handling
