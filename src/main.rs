@@ -3,15 +3,16 @@ mod preprocessing;
 mod tokenizer;
 mod succession_tree;
 
-use std::{fs::{File, create_dir_all, read_to_string}, io::Write, time::SystemTime, process::exit, path::Path};
+use std::{fs::{File, create_dir_all, read}, io::Write, time::SystemTime, process::exit, path::Path};
 
-use nanoserde::{SerRon, DeRon, SerBin};
+use nanoserde::{SerBin, DeBin};
 use succession_tree::{SuccessionTree, TokenGenerationError};
 
 use crate::{printer::*, preprocessing::*, tokenizer::*};
 
 
 fn main() {
+
 	let printer = Printer { start: SystemTime::now() };
 
 	let options = get_corpora_names();
@@ -37,17 +38,17 @@ fn main() {
 
 
 	let vocab: Vec<(Option<(usize, usize)>, String)> =
-	if Path::new(&format!("./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id])).exists() {
-		printer.print(&format!("found previously created tokens at ./corpora/{}/data/{new_tokens}_tokens.ron, loading...", options[corpus_id]));
+	if Path::new(&format!("./corpora/{}/data/{new_tokens}_tokens.bin", options[corpus_id])).exists() {
+		printer.print(&format!("found previously created tokens at ./corpora/{}/data/{new_tokens}_tokens.bin, loading...", options[corpus_id]));
 
-		let string = read_to_string(format!("./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id]));
-		let string = if let Ok(s) = string { s } else {
+		let bytes = read(format!("./corpora/{}/data/{new_tokens}_tokens.bin", options[corpus_id]));
+		let bytes = if let Ok(s) = bytes { s } else {
 			printer.print("Error while reading the file, exiting...");
 			exit(0);
 		};
 
 
-		if let Ok(v) = DeRon::deserialize_ron(&string) { v }
+		if let Ok(v) = DeBin::deserialize_bin(&bytes) { v }
 		else {
 			printer.print("invalid file contents, exiting...");
 			exit(0)
@@ -70,28 +71,28 @@ fn main() {
 		print_lexicon(&lexicon, &vocab, 10);
 		println!();
 
-		printer.print(&format!("saving vocabulary to ./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id]));
+		printer.print(&format!("saving vocabulary to ./corpora/{}/data/{new_tokens}_tokens.bin", options[corpus_id]));
 		create_dir_all(&format!("./corpora/{}/data/", options[corpus_id])).unwrap();
-		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokens.ron", options[corpus_id])).unwrap();
-		let serialized = vocab.serialize_ron();
-		file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
+		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokens.bin", options[corpus_id])).unwrap();
+		let serialized = vocab.serialize_bin();
+		file.write_all(&serialized).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
 		drop(file);
 
 		vocab
 	};
 
 	let tokenized: Vec<usize> =
-	if Path::new(&format!("./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id])).exists() {
-		printer.print(&format!("found previously created tokenization at ./corpora/{}/data/{new_tokens}_tokenization.ron, loading...", options[corpus_id]));
+	if Path::new(&format!("./corpora/{}/data/{new_tokens}_tokenization.bin", options[corpus_id])).exists() {
+		printer.print(&format!("found previously created tokenization at ./corpora/{}/data/{new_tokens}_tokenization.bin, loading...", options[corpus_id]));
 		
-		let string = read_to_string(format!("./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id]));
-		let string = if let Ok(s) = string { s } else {
+		let bytes = read(format!("./corpora/{}/data/{new_tokens}_tokenization.bin", options[corpus_id]));
+		let bytes = if let Ok(s) = bytes { s } else {
 			printer.print("Error while reading the file, exiting...");
 			exit(0);
 		};
 
 
-		if let Ok(v) = DeRon::deserialize_ron(&string) { v }
+		if let Ok(v) = DeBin::deserialize_bin(&bytes) { v }
 		else {
 			printer.print("invalid file contents, exiting...");
 			exit(0)
@@ -104,27 +105,27 @@ fn main() {
 			exit(0);
 		});
 
-		printer.print(&format!("saving tokenization to ./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id]));
-		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokenization.ron", options[corpus_id])).unwrap();
-		let serialized = tokenized.serialize_ron();
-		file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
+		printer.print(&format!("saving tokenization to ./corpora/{}/data/{new_tokens}_tokenization.bin", options[corpus_id]));
+		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_tokenization.bin", options[corpus_id])).unwrap();
+		let serialized = tokenized.serialize_bin();
+		file.write_all(&serialized).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
 		drop(file);
 
 		tokenized
 	};
 
 	let tree: SuccessionTree =
-	if Path::new(&format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id])).exists() {
-		printer.print(&format!("found previously created tree at ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron, loading...", options[corpus_id]));
+	if Path::new(&format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.bin", options[corpus_id])).exists() {
+		printer.print(&format!("found previously created tree at ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.bin, loading...", options[corpus_id]));
 		
-		let string = read_to_string(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id]));
-		let string = if let Ok(s) = string { s } else {
+		let bytes = read(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.bin", options[corpus_id]));
+		let bytes = if let Ok(s) = bytes { s } else {
 			printer.print("Error while reading the file, exiting...");
 			exit(0);
 		};
 
 
-		if let Ok(v) = DeRon::deserialize_ron(&string) { v }
+		if let Ok(v) = DeBin::deserialize_bin(&bytes) { v }
 		else {
 			printer.print("invalid file contents, exiting...");
 			exit(0)
@@ -143,10 +144,10 @@ fn main() {
 		}
 		println!();
 	
-		printer.print(&format!("saving succession tree to ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id]));
-		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.ron", options[corpus_id])).unwrap();
-		let serialized = tree.serialize_ron();
-		file.write_all(serialized.as_bytes()).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
+		printer.print(&format!("saving succession tree to ./corpora/{}/data/{new_tokens}_{phrase_length}_tree.bin", options[corpus_id]));
+		let mut file = File::create(format!("./corpora/{}/data/{new_tokens}_{phrase_length}_tree.bin", options[corpus_id])).unwrap();
+		let serialized = tree.serialize_bin();
+		file.write_all(&serialized).unwrap_or_else(|e| {printer.print(&format!("Filesystem error: '{}'. Exiting...", e)); exit(0)});
 		drop(file);
 
 		tree
@@ -156,7 +157,7 @@ fn main() {
 	let text = printer.input();
 	let mut tokenized = tokenize_text(&text, &vocab, None).unwrap_or_else(|e| {printer.print(&format!("Error while tokenizing: {}, exiting...", e)); exit(0)});
 	
-	for _ in 0..100 {
+	for _ in 0..1000 {
 		let mut slice_boundary = if tokenized.len() < phrase_length {0} else {tokenized.len()-phrase_length};
 		loop {
 			let res = tree.next_token(&tokenized[slice_boundary..]);
@@ -184,6 +185,5 @@ fn main() {
 }
 
 // implement creativity
-// change saving format
-// look for optimizations
+// look for optimizations - multithreading
 // whitespace handling

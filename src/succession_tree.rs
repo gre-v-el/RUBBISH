@@ -1,6 +1,6 @@
-use nanoserde::{SerRon, DeRon, SerBin};
+use nanoserde::{SerBin, DeBin};
 
-#[derive(SerRon, DeRon, SerBin)]
+#[derive(SerBin, DeBin)]
 pub struct Node {
 	value: usize,
 	children: Vec<(Node, usize)> // child, strength
@@ -12,7 +12,7 @@ impl Node {
 	}
 }
 
-#[derive(SerRon, DeRon, SerBin)]
+#[derive(SerBin, DeBin)]
 pub struct SuccessionTree {
 	entry_points: Vec<Node>,
 	depth: usize,
