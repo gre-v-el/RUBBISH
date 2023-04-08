@@ -7,7 +7,7 @@ This Program generates text based on patterns in an analyzed corpus.
 On first execution, RUBBISH will create a `./corpora` folder. There, you should create a new folder with a name of your corpus containing .txt files. When this folder is chosen, RUBBISH will create `./corpora/your_corpus_name_/data` folder, where it will place cached files. RUBBISH will then tokenize the corpus and analyze patterns in it. After this you can input text which will then be continued. 
 
 ## Example
-(this example uses the wikipedia corpus from https://www.english-corpora.org)
+(this example uses a corpus containing some project gutenberg books)
 
 File structure before:
 ```
@@ -80,7 +80,7 @@ File structure after
 ```
 parent/
 ├─ corpora/
-│  ├─ wikipedia/
+│  ├─ gutenberg/
 │  │  ├─ An ethical philosophy of life presented in its main outlines - Felix Adler.txt
 │  │  ├─ The Dance of Life - Havelock Ellis.txt
 │  │  ├─ The Price of a Soul - William Jennings Bryan.txt
